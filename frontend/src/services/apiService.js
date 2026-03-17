@@ -47,3 +47,15 @@ export const getSchema = async () => {
   const response = await api.get(`/schema`);
   return response.data;
 };
+
+/**
+ * Send a follow-up message with conversation history to refine the current chart
+ * @param {string} followUpQuery - the user's follow-up message
+ * @param {Array<{query: string, sql: string}>} conversationHistory - previous turns
+ * @param {string} table - active table name
+ */
+export const sendFollowUp = async (followUpQuery, conversationHistory = [], table = 'sales') => {
+  const response = await api.post('/followup', { followUpQuery, conversationHistory, table });
+  return response.data;
+};
+

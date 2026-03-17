@@ -125,3 +125,74 @@ Generate the SQL query and visualization config as JSON.`;
     throw new Error(`Failed to generate SQL from AI: ${error.message}`);
   }
 };
+
+/**
+ * Generate a refined SQL query based on a follow-up message and conversation history
+ * @param {string} followUpQuery - the user's follow-up message
+ * @param {Array<{query: string, sql: string, title: string}>} history - previous turns
+ * @param {string} tableName - the active table name
+ * @param {string|null} columns - optional column string for uploaded tables
+ */
+export const generateFollowUpSQL = async (followUpQuery, history = [], tableName = 'sales', columns = null) => {
+  try {
+    const schemaContext = getSchemaContext(tableName, columns);
+
+    // Build conversation history block
+    const historyBlock = history
+      .map((turn, i) => `Turn ${i + 1}:
+  User asked: "${turn.query}"
+  Generated SQL: ${turn.sql}`)
+      .join('\n\n');
+
+    const prompt = `
+Database Schema:
+${schemaContext}
+
+Conversation History:
+${historyBlock || '(No previous turns)'}
+
+User Follow-up: "${followUpQuery}"
+
+Based on the conversation history above, generate a refined SQL query that applies the user's requested modification.
+Return ONLY the JSON object as specified — no explanation.`;
+
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-flash-latest',
+      systemInstruction: SYSTEM_PROMPT,
+    });
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text().trim();
+
+    // Clean up potential markdown fences
+    let cleaned = text;
+    if (cleaned.startsWith('```json')) cleaned = cleaned.slice(7);
+    else if (cleaned.startsWith('```')) cleaned = cleaned.slice(3);
+    if (cleaned.endsWith('```')) cleaned = cleaned.slice(0, -3);
+    cleaned = cleaned.trim();
+
+    const parsed = JSON.parse(cleaned);
+
+    // Validate — ensure no destructive SQL
+    const sqlUpper = parsed.sql.toUpperCase().trim();
+    const forbidden = ['INSERT', 'UPDATE', 'DELETE', 'DROP', 'ALTER', 'CREATE', 'TRUNCATE', 'GRANT', 'REVOKE'];
+    for (const keyword of forbidden) {
+      if (sqlUpper.startsWith(keyword)) {
+        throw new Error(`Forbidden SQL operation detected: ${keyword}`);
+      }
+    }
+
+    return {
+      sql: parsed.sql,
+      chartType: parsed.chart_type || 'bar',
+      xAxis: parsed.x_axis || '',
+      yAxis: parsed.y_axis || '',
+      title: parsed.title || 'Query Results',
+      description: parsed.description || '',
+    };
+  } catch (error) {
+    console.error('Gemini Follow-up Error:', error.message);
+    throw new Error(`Failed to generate follow-up SQL: ${error.message}`);
+  }
+};

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import multer from 'multer';
-import { handleQuery, handleGetSchema, handleUpload } from '../controllers/queryController.js';
+import { handleQuery, handleGetSchema, handleUpload, handleFollowUp } from '../controllers/queryController.js';
 
 import { protect } from '../middleware/authMiddleware.js';
 
@@ -30,5 +30,8 @@ router.get('/schema', handleGetSchema);
 
 // POST /api/upload — upload CSV and create table
 router.post('/upload', upload.single('file'), handleUpload);
+
+// POST /api/followup — send a follow-up message with conversation history
+router.post('/followup', handleFollowUp);
 
 export default router;

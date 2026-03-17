@@ -1,4 +1,4 @@
-import { generateSQL } from '../services/geminiService.js';
+import { generateSQL, generateFollowUpSQL } from '../services/geminiService.js';
 import { executeQuery, getTableSchema, getAllTables } from '../services/queryService.js';
 import { recommendChartType, formatChartData, generateKPIMetrics } from '../services/chartService.js';
 import { queryDB } from '../config/db.js';
@@ -197,6 +197,75 @@ export const handleUpload = async (req, res, next) => {
     if (req.file && fs.existsSync(req.file.path)) {
       fs.unlinkSync(req.file.path);
     }
+    next(error);
+  }
+};
+
+/**
+ * POST /api/followup
+ * Accept a follow-up natural language message + conversation history,
+ * generate a refined SQL, and return new chart data.
+ */
+export const handleFollowUp = async (req, res, next) => {
+  try {
+    const { followUpQuery, conversationHistory, table } = req.body;
+
+    if (!followUpQuery || followUpQuery.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        error: 'Follow-up query is required.',
+      });
+    }
+
+    const tableName = table || 'sales';
+
+    // Step 1: Generate refined SQL using conversation history as context
+    const aiResult = await generateFollowUpSQL(
+      followUpQuery,
+      conversationHistory || [],
+      tableName
+    );
+
+    // Step 2: Execute the refined SQL
+    const queryResult = await executeQuery(aiResult.sql);
+
+    // Step 3: Determine chart type
+    const { chartType, reason } = recommendChartType(
+      queryResult.rows,
+      queryResult.fields,
+      aiResult.chartType
+    );
+
+    // Step 4: Format data for frontend
+    const chartData = formatChartData(
+      queryResult.rows,
+      aiResult.xAxis,
+      aiResult.yAxis,
+      chartType
+    );
+
+    // Step 5: Generate KPI metrics if applicable
+    const kpis = chartType === 'kpi' ? generateKPIMetrics(queryResult.rows, queryResult.fields) : [];
+
+    // Step 6: Return structured response
+    res.json({
+      success: true,
+      data: {
+        query: followUpQuery,
+        sql: aiResult.sql,
+        chartType,
+        chartReason: reason,
+        xAxis: aiResult.xAxis,
+        yAxis: aiResult.yAxis,
+        title: aiResult.title,
+        description: aiResult.description,
+        chartData,
+        kpis,
+        rowCount: queryResult.rowCount,
+        fields: queryResult.fields,
+      },
+    });
+  } catch (error) {
     next(error);
   }
 };

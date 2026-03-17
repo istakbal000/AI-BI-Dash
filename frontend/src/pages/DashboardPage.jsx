@@ -2,6 +2,7 @@ import { useAuth } from '../context/AuthContext';
 import { useDashboard } from '../hooks/useDashboard';
 import PromptInput from '../components/PromptInput';
 import Dashboard from '../components/Dashboard';
+import ChatPanel from '../components/ChatPanel';
 import {
   Loader2,
   AlertCircle,
@@ -23,10 +24,13 @@ export default function DashboardPage() {
     error,
     result,
     history,
+    conversationHistory,
     executeQuery,
+    executeFollowUp,
     handleUpload,
     clearError,
     selectHistoryItem,
+    clearConversation,
   } = useDashboard();
 
   return (
@@ -174,6 +178,17 @@ export default function DashboardPage() {
 
               {/* Dashboard Result */}
               {result && !loading && <Dashboard result={result} />}
+
+              {/* Follow-up Chat Panel — only shown when a result exists */}
+              {result && (
+                <ChatPanel
+                  conversationHistory={conversationHistory}
+                  onFollowUp={executeFollowUp}
+                  onClear={clearConversation}
+                  loading={loading}
+                  currentResult={result}
+                />
+              )}
             </div>
 
             {/* History Sidebar */}

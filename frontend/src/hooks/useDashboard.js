@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { sendQuery, uploadCSV, getSchema } from '../services/apiService';
+import { sendQuery, uploadCSV, getSchema, sendFollowUp } from '../services/apiService';
 
 /**
  * Custom hook for dashboard state management
@@ -10,6 +10,10 @@ export const useDashboard = () => {
   const [result, setResult] = useState(null);
   const [history, setHistory] = useState([]);
   const [schema, setSchema] = useState(null);
+  // conversationHistory tracks {query, sql, title} pairs for follow-up context
+  const [conversationHistory, setConversationHistory] = useState([]);
+  // activeTable tracks which table the current conversation is about
+  const [activeTable, setActiveTable] = useState('sales');
 
   /**
    * Execute a natural language query
@@ -30,6 +34,9 @@ export const useDashboard = () => {
         };
         setResult(entry);
         setHistory((prev) => [entry, ...prev]);
+        // Reset conversation history on a fresh query
+        setConversationHistory([{ query, sql: response.data.sql, title: response.data.title }]);
+        setActiveTable(table || 'sales');
       } else {
         setError(response.error || 'Unknown error occurred');
       }
@@ -68,6 +75,43 @@ export const useDashboard = () => {
   }, []);
 
   /**
+   * Execute a follow-up query using conversation history as context
+   */
+  const executeFollowUp = useCallback(async (followUpQuery) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await sendFollowUp(followUpQuery, conversationHistory, activeTable);
+
+      if (response.success) {
+        const entry = {
+          id: Date.now(),
+          query: followUpQuery,
+          timestamp: new Date().toLocaleTimeString(),
+          isFollowUp: true,
+          ...response.data,
+        };
+        setResult(entry);
+        setHistory((prev) => [entry, ...prev]);
+        // Append this turn to the conversation history
+        setConversationHistory((prev) => [
+          ...prev,
+          { query: followUpQuery, sql: response.data.sql, title: response.data.title },
+        ]);
+      } else {
+        setError(response.error || 'Unknown error occurred');
+      }
+    } catch (err) {
+      const message =
+        err.response?.data?.error || err.message || 'Failed to process follow-up';
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
+  }, [conversationHistory, activeTable]);
+
+  /**
    * Fetch database schema
    */
   const fetchSchema = useCallback(async () => {
@@ -94,16 +138,28 @@ export const useDashboard = () => {
     setError(null);
   }, []);
 
+  /**
+   * Clear the current conversation and reset dashboard
+   */
+  const clearConversation = useCallback(() => {
+    setResult(null);
+    setError(null);
+    setConversationHistory([]);
+  }, []);
+
   return {
     loading,
     error,
     result,
     history,
     schema,
+    conversationHistory,
     executeQuery,
+    executeFollowUp,
     handleUpload,
     fetchSchema,
     clearError,
     selectHistoryItem,
+    clearConversation,
   };
 };
