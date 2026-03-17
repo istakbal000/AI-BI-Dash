@@ -1,8 +1,10 @@
 import { useAuth } from '../context/AuthContext';
+import { useState } from 'react';
 import { useDashboard } from '../hooks/useDashboard';
 import PromptInput from '../components/PromptInput';
 import Dashboard from '../components/Dashboard';
 import ChatPanel from '../components/ChatPanel';
+import CopilotPanel from '../components/CopilotPanel';
 import {
   Loader2,
   AlertCircle,
@@ -32,6 +34,8 @@ export default function DashboardPage() {
     selectHistoryItem,
     clearConversation,
   } = useDashboard();
+
+  const [copilotVisible, setCopilotVisible] = useState(false);
 
   return (
     <div className="min-h-screen bg-[#0a0a0c] text-white">
@@ -227,6 +231,13 @@ export default function DashboardPage() {
             )}
           </div>
         </main>
+
+        {/* AI Copilot Panel */}
+        <CopilotPanel
+          result={result}
+          isVisible={copilotVisible}
+          onToggle={() => setCopilotVisible(!copilotVisible)}
+        />
       </div>
     </div>
   );

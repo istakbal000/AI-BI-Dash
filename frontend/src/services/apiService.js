@@ -59,3 +59,43 @@ export const sendFollowUp = async (followUpQuery, conversationHistory = [], tabl
   return response.data;
 };
 
+/**
+ * Run full copilot analysis
+ */
+export const analyzeWithCopilot = async (params) => {
+  const response = await api.post('/copilot/analyze', params);
+  return response.data;
+};
+
+/**
+ * Generate insights only
+ */
+export const generateInsights = async (params) => {
+  const response = await api.post('/copilot/insights', params);
+  return response.data;
+};
+
+/**
+ * Perform root cause analysis
+ */
+export const analyzeRootCause = async (params) => {
+  const response = await api.post('/copilot/root-cause', params);
+  return response.data;
+};
+
+/**
+ * Run what-if simulation
+ */
+export const runSimulation = async (params) => {
+  const response = await api.post('/copilot/simulate', params);
+  return response.data;
+};
+
+/**
+ * Generate recommendations
+ */
+export const generateRecommendations = async (params) => {
+  const response = await api.post('/copilot/recommendations', params);
+  return response.data;
+};
+

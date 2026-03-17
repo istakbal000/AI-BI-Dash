@@ -3,6 +3,7 @@ import cors from 'cors';
 import { env } from './config/env.js';
 import queryRoutes from './routes/queryRoutes.js';
 import authRoutes from './routes/authRoutes.js';
+import copilotRoutes from './routes/copilotRoutes.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 
 const app = express();
@@ -26,6 +27,7 @@ app.get('/api/health', (req, res) => {
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api', queryRoutes);
+app.use('/api/copilot', copilotRoutes);
 
 // Error handling
 app.use(notFoundHandler);
