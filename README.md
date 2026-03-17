@@ -2,6 +2,8 @@
 
 > Generate interactive dashboards from natural language queries using AI, PostgreSQL, and React.
 
+**🔗 GitHub Repository:** [istakbal000/AI-BI-Dash](https://github.com/istakbal000/AI-BI-Dash)
+
 ![Tech Stack](https://img.shields.io/badge/React-18-blue?logo=react)
 ![Node.js](https://img.shields.io/badge/Node.js-18+-green?logo=node.js)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15+-blue?logo=postgresql)
@@ -11,7 +13,7 @@
 
 ## 📋 Overview
 
-AI BI Dashboard allows **non-technical users** to generate interactive dashboards using natural language queries. Simply type a question like:
+AI BI Dashboard allows **non-technical users** to generate interactive dashboards using natural language queries and get **AI-powered business insights**. Simply type a question like:
 
 > *"Show monthly sales revenue for Q3 broken down by region and highlight the top-performing product category."*
 
@@ -20,6 +22,7 @@ The system will:
 2. 🔄 Convert it to optimized **PostgreSQL SQL**
 3. 📊 Select the best **visualization** (line, bar, pie, scatter, KPI, table)
 4. 📈 Render an **interactive dashboard** with Recharts
+5. 🤖 **AI Business Copilot** provides insights, root cause analysis, simulations, and recommendations
 
 ---
 
@@ -34,6 +37,7 @@ User Prompt
           → Data Processing + Chart Selection
             → JSON Response
               → React renders interactive dashboard
+                → AI Business Copilot (insights, analysis, recommendations)
 ```
 
 ---
@@ -49,7 +53,9 @@ ai-bi-dashboard/
 │       │   ├── Dashboard.jsx        # Main dashboard layout
 │       │   ├── ChartContainer.jsx   # Dynamic chart rendering
 │       │   ├── KPICards.jsx         # KPI metric cards
-│       │   └── DataTable.jsx        # Data table view
+│       │   ├── DataTable.jsx        # Data table view
+│       │   ├── CopilotPanel.jsx     # AI Business Copilot panel
+│       │   └── ChatPanel.jsx       # Follow-up chat interface
 │       ├── pages/
 │       │   └── DashboardPage.jsx    # Main page with history
 │       ├── hooks/
@@ -62,13 +68,18 @@ ai-bi-dashboard/
 │   │   ├── db.js                    # PostgreSQL connection
 │   │   └── env.js                   # Environment config
 │   ├── controllers/
-│   │   └── queryController.js       # Request handlers
+│   │   ├── queryController.js       # Request handlers
+│   │   ├── authController.js        # Authentication handlers
+│   │   └── copilotController.js    # AI Copilot handlers
 │   ├── routes/
-│   │   └── queryRoutes.js           # API routes
+│   │   ├── queryRoutes.js           # API routes
+│   │   ├── authRoutes.js           # Auth routes
+│   │   └── copilotRoutes.js        # Copilot API routes
 │   ├── services/
 │   │   ├── geminiService.js         # Gemini AI integration
 │   │   ├── queryService.js          # Database query service
-│   │   └── chartService.js          # Chart selection engine
+│   │   ├── chartService.js          # Chart selection engine
+│   │   └── copilotService.js       # AI Copilot analysis engine
 │   └── middleware/
 │       └── errorHandler.js          # Error handling
 └── database/
@@ -181,6 +192,99 @@ Health check endpoint.
 
 ---
 
+## 🧠 AI Business Copilot
+
+Advanced AI-powered business intelligence that goes beyond data visualization to provide actionable insights.
+
+### Features
+
+#### 1. **Insight Generator** 🔍
+Automatically analyzes query results and generates meaningful business insights:
+- **Trends**: Identifies patterns and directional changes
+- **Anomalies**: Detects outliers and unusual patterns  
+- **Comparisons**: Highlights relative performance
+- **Opportunities**: Suggests growth areas
+- **Warnings**: Flags potential issues
+
+#### 2. **Root Cause Analysis** 🤔
+Ask "why" questions to understand data patterns:
+- **Primary Cause**: Main driver behind observed patterns
+- **Contributing Factors**: Secondary influences
+- **Data Patterns**: Correlations and relationships
+- **Evidence**: Supporting data points
+- **Recommendations**: Next steps for investigation
+
+#### 3. **What-if Simulation Engine** ⚡
+Test business scenarios and see projected outcomes:
+- **Discount Changes**: Simulate impact of discount adjustments (-50% to +50%)
+- **Regional Filtering**: Filter by geographic regions
+- **Price Variations**: Test price increase/decrease scenarios
+- **Risk Assessment**: Evaluate confidence and risk levels
+- **Projected Metrics**: Compare baseline vs. projected results
+
+#### 4. **Recommendation Engine** 🎯
+Get prioritized, actionable business recommendations:
+- **Priority Ranking**: High to low impact suggestions
+- **Category Classification**: Revenue, cost, marketing, operations, product, customer
+- **Expected Impact**: Estimated metric improvements
+- **Implementation Plan**: Effort level, timeline, and step-by-step actions
+- **Supporting Data**: Evidence-based recommendations
+
+### Copilot API Endpoints
+
+#### `POST /api/copilot/analyze`
+Complete copilot analysis with all features enabled.
+
+**Request:**
+```json
+{
+  "queryData": [...],
+  "userQuery": "Show monthly sales revenue",
+  "enableInsights": true,
+  "enableRootCause": false,
+  "enableSimulation": false,
+  "enableRecommendations": true,
+  "table": "sales"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "insights": [...],
+    "root_cause": {...},
+    "simulation": {...},
+    "recommendations": [...]
+  }
+}
+```
+
+#### `POST /api/copilot/insights`
+Generate business insights only.
+
+#### `POST /api/copilot/root-cause`
+Perform root cause analysis for "why" questions.
+
+#### `POST /api/copilot/simulate`
+Run what-if simulation scenarios.
+
+#### `POST /api/copilot/recommendations`
+Generate actionable recommendations.
+
+### Usage
+
+1. **Run a query** → Get data visualization
+2. **Click AI Copilot button** (brain icon top-right)
+3. **Choose analysis tab**:
+   - **Insights**: Auto-generated from your data
+   - **Why?**: Ask "Why did revenue drop?" type questions
+   - **Simulate**: Adjust sliders to test scenarios
+   - **Actions**: Get prioritized recommendations
+
+---
+
 ## 💡 Demo Prompts
 
 Try these queries:
@@ -229,9 +333,10 @@ The system handles:
 
 ## 🔮 Future Roadmap
 
+- [x] **AI Business Copilot** - Insights, root cause analysis, simulation, recommendations
+- [x] User authentication system with JWT
 - [ ] Redis caching for repeated queries
 - [ ] Multi-dataset support with joins
-- [ ] User authentication system
 - [ ] Role-based access control
 - [ ] Dashboard saving and sharing
 - [ ] Export to PDF/PNG
