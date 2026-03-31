@@ -6,14 +6,23 @@ const api = axios.create({
   baseURL: API_BASE_URL,
 });
 
-// Add token to requests
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+// Add response interceptor for error handling
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response) {
+      // Server responded with error status
+      return Promise.reject(error);
+    } else if (error.request) {
+      // Request made but no response (CORS/network issue)
+      console.error('No response from server - check CORS/network');
+      return Promise.reject({ response: { data: { error: 'Cannot connect to server. Please check your connection.' } } });
+    } else {
+      // Something else happened
+      return Promise.reject(error);
+    }
   }
-  return config;
-});
+);
 
 /**
  * Send a natural language query to the backend
