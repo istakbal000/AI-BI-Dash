@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import { env } from './config/env.js';
+import { pool } from './config/db.js';
 import queryRoutes from './routes/queryRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import copilotRoutes from './routes/copilotRoutes.js';
@@ -42,8 +43,24 @@ app.use((req, res, next) => {
 });
 
 // Health check
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+app.get('/api/health', async (req, res) => {
+  try {
+    // Test database connection
+    const dbTest = await pool.query('SELECT NOW()');
+    res.json({ 
+      status: 'ok', 
+      timestamp: new Date().toISOString(),
+      database: 'connected',
+      dbTime: dbTest.rows[0].now
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      status: 'error', 
+      timestamp: new Date().toISOString(),
+      database: 'disconnected',
+      error: error.message
+    });
+  }
 });
 
 // API Routes

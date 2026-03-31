@@ -63,9 +63,11 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       console.error('Signup error details:', err); // Debug log
       console.error('Signup error response:', err.response?.data); // Debug log
+      console.error('Signup error status:', err.response?.status); // Debug log
+      console.error('Signup error config:', err.config); // Debug log
       return { 
         success: false, 
-        message: err.response?.data?.message || err.message || 'Signup failed' 
+        message: err.response?.data?.message || err.response?.data?.error || err.message || 'Signup failed' 
       };
     }
   };
