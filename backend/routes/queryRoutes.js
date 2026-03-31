@@ -29,7 +29,7 @@ router.post('/query', handleQuery);
 router.get('/schema', handleGetSchema);
 
 // POST /api/upload — upload CSV and create table
-router.post('/upload', upload.single('file'), handleUpload);
+router.post('/upload', upload.array('file', 10), handleUpload);
 
 // POST /api/followup — send a follow-up message with conversation history
 router.post('/followup', handleFollowUp);

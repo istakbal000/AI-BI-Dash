@@ -27,9 +27,9 @@ export default function PromptInput({ onSubmit, onUpload, loading }) {
   };
 
   const handleFileChange = async (e) => {
-    const file = e.target.files[0];
-    if (file && onUpload) {
-      await onUpload(file);
+    const files = Array.from(e.target.files);
+    if (files.length > 0 && onUpload) {
+      await onUpload(files);
       e.target.value = '';
     }
   };
@@ -74,6 +74,7 @@ export default function PromptInput({ onSubmit, onUpload, loading }) {
           ref={fileInputRef}
           type="file"
           accept=".csv"
+          multiple
           onChange={handleFileChange}
           className="hidden"
         />

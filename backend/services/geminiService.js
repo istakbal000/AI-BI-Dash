@@ -4,10 +4,11 @@ import { env } from '../config/env.js';
 const genAI = new GoogleGenerativeAI(env.geminiApiKey);
 
 /**
- * Schema context for Gemini — describes available tables and columns
+ * Schema context for Gemini — describes all available tables and their columns
+ * @param {Array<{name: string, columns: string}>} tables
  */
-const getSchemaContext = (tableName = 'sales', columns = null) => {
-  const defaultColumns = `
+const getSchemaContext = (tables = []) => {
+  const defaultSalesColumns = `
   order_id INTEGER
   order_date DATE
   product_id INTEGER
@@ -22,11 +23,15 @@ const getSchemaContext = (tableName = 'sales', columns = null) => {
   discounted_price FLOAT
   total_revenue FLOAT (calculated as discounted_price * quantity_sold)`;
 
-  return `
-Table: ${tableName}
+  if (!tables || tables.length === 0) {
+    return `Table: sales\nColumns:\n${defaultSalesColumns}`;
+  }
+
+  return tables.map(t => `
+Table: ${t.name}
 Columns:
-${columns || defaultColumns}
-  `;
+${t.columns}
+  `).join('\n---\n');
 };
 
 /**
@@ -34,26 +39,32 @@ ${columns || defaultColumns}
  */
 const SYSTEM_PROMPT = `You are an expert data analyst. Convert the user's natural language question into a PostgreSQL SQL query using the provided database schema.
 
+If the user's question is unrelated to the provided database schema, data analysis, or business metrics (e.g., greetings, general conversation, personal questions, or comments like "today is a nice day"), you must indicate that it is out of scope.
+
 IMPORTANT RULES:
 1. Only generate SELECT queries. Never generate INSERT, UPDATE, DELETE, DROP, ALTER, or any DDL/DML statements.
 2. Always use proper PostgreSQL syntax.
 3. Use aggregate functions (SUM, AVG, COUNT, etc.) when appropriate.
 4. Use GROUP BY when using aggregate functions with non-aggregated columns.
 5. Use ORDER BY to sort results meaningfully.
-6. Limit results to 100 rows max unless the user asks for more.
+6. When multiple tables are provided, use JOINs to correlate them if necessary. ALWAYS use table aliases (e.g., s.order_id) when querying multiple tables to avoid ambiguity.
+7. Limit results to 100 rows max unless the user asks for more.
 7. For date-based queries, use EXTRACT or DATE_TRUNC functions.
 8. Always alias calculated columns with meaningful names.
 9. When referring to "Q1", "Q2", "Q3", "Q4", use EXTRACT(QUARTER FROM order_date).
 10. When referring to "monthly", use EXTRACT(MONTH FROM order_date) or TO_CHAR(order_date, 'Month').
+11. ALWAYS order the results by the X-axis column (usually date or time) in ascending order to ensure correct line chart rendering.
 
 You MUST respond with ONLY a valid JSON object (no markdown, no code fences, no explanation) in this exact format:
 {
-  "sql": "YOUR SQL QUERY HERE",
-  "chart_type": "line|bar|pie|scatter|table|kpi",
+  "sql": "YOUR SQL QUERY HERE" or null,
+  "is_out_of_scope": true/false,
+  "chart_type": "line|bar|pie|scatter|table|kpi|heatmap",
   "x_axis": "column_name_for_x_axis",
   "y_axis": "column_name_for_y_axis",
+  "z_axis": "column_name_for_value_in_heatmap" or null,
   "title": "A short descriptive title for the chart",
-  "description": "A brief description of what the data shows"
+  "description": "A brief description of what the data shows, or an explanation if out of scope"
 }
 
 Chart type selection rules:
@@ -63,14 +74,17 @@ Chart type selection rules:
 - Use "scatter" for correlation between two numeric values
 - Use "table" for detailed row-level data
 - Use "kpi" for single aggregate values (e.g., total revenue, average rating)
+- Use "heatmap" for analyzing density or correlation between two categorical dimensions (e.g., Sales by Region AND Category)
 `;
 
 /**
  * Convert natural language query to SQL using Gemini
+ * @param {string} userQuery
+ * @param {Array<{name: string, columns: string}>} tables - Array of available tables
  */
-export const generateSQL = async (userQuery, tableName = 'sales', columns = null) => {
+export const generateSQL = async (userQuery, tables = []) => {
   try {
-    const schemaContext = getSchemaContext(tableName, columns);
+    const schemaContext = getSchemaContext(tables);
 
     const prompt = `
 Database Schema:
@@ -81,7 +95,7 @@ User Question: "${userQuery}"
 Generate the SQL query and visualization config as JSON.`;
 
     const model = genAI.getGenerativeModel({ 
-      model: 'gemini-flash-latest',
+      model: env.geminiModel,
       systemInstruction: SYSTEM_PROMPT 
     });
 
@@ -103,6 +117,12 @@ Generate the SQL query and visualization config as JSON.`;
 
     const parsed = JSON.parse(cleaned);
 
+    // Check for out of scope
+    if (parsed.is_out_of_scope || !parsed.sql) {
+      const msg = parsed.description || "I'm sorry, I can only help with data-related questions about your business metrics.";
+      throw new Error(`OUT_OF_SCOPE: ${msg}`);
+    }
+
     // Validate — ensure no destructive SQL
     const sqlUpper = parsed.sql.toUpperCase().trim();
     const forbidden = ['INSERT', 'UPDATE', 'DELETE', 'DROP', 'ALTER', 'CREATE', 'TRUNCATE', 'GRANT', 'REVOKE'];
@@ -117,6 +137,7 @@ Generate the SQL query and visualization config as JSON.`;
       chartType: parsed.chart_type || 'bar',
       xAxis: parsed.x_axis || '',
       yAxis: parsed.y_axis || '',
+      zAxis: parsed.z_axis || '',
       title: parsed.title || 'Query Results',
       description: parsed.description || '',
     };
@@ -130,12 +151,11 @@ Generate the SQL query and visualization config as JSON.`;
  * Generate a refined SQL query based on a follow-up message and conversation history
  * @param {string} followUpQuery - the user's follow-up message
  * @param {Array<{query: string, sql: string, title: string}>} history - previous turns
- * @param {string} tableName - the active table name
- * @param {string|null} columns - optional column string for uploaded tables
+ * @param {Array<{name: string, columns: string}>} tables - Array of available tables
  */
-export const generateFollowUpSQL = async (followUpQuery, history = [], tableName = 'sales', columns = null) => {
+export const generateFollowUpSQL = async (followUpQuery, history = [], tables = []) => {
   try {
-    const schemaContext = getSchemaContext(tableName, columns);
+    const schemaContext = getSchemaContext(tables);
 
     // Build conversation history block
     const historyBlock = history
@@ -157,7 +177,7 @@ Based on the conversation history above, generate a refined SQL query that appli
 Return ONLY the JSON object as specified — no explanation.`;
 
     const model = genAI.getGenerativeModel({
-      model: 'gemini-flash-latest',
+      model: env.geminiModel,
       systemInstruction: SYSTEM_PROMPT,
     });
 
@@ -174,6 +194,12 @@ Return ONLY the JSON object as specified — no explanation.`;
 
     const parsed = JSON.parse(cleaned);
 
+    // Check for out of scope
+    if (parsed.is_out_of_scope || !parsed.sql) {
+      const msg = parsed.description || "I'm sorry, I can only help with data-related questions about your business metrics.";
+      throw new Error(`OUT_OF_SCOPE: ${msg}`);
+    }
+
     // Validate — ensure no destructive SQL
     const sqlUpper = parsed.sql.toUpperCase().trim();
     const forbidden = ['INSERT', 'UPDATE', 'DELETE', 'DROP', 'ALTER', 'CREATE', 'TRUNCATE', 'GRANT', 'REVOKE'];
@@ -188,6 +214,7 @@ Return ONLY the JSON object as specified — no explanation.`;
       chartType: parsed.chart_type || 'bar',
       xAxis: parsed.x_axis || '',
       yAxis: parsed.y_axis || '',
+      zAxis: parsed.z_axis || '',
       title: parsed.title || 'Query Results',
       description: parsed.description || '',
     };

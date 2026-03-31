@@ -18,12 +18,13 @@ export const useDashboard = () => {
   /**
    * Execute a natural language query
    */
-  const executeQuery = useCallback(async (query, table = 'sales') => {
+  const executeQuery = useCallback(async (query, table) => {
     setLoading(true);
     setError(null);
 
     try {
-      const response = await sendQuery(query, table);
+      const targetTable = table || activeTable || 'sales';
+      const response = await sendQuery(query, targetTable);
 
       if (response.success) {
         const entry = {
@@ -50,15 +51,18 @@ export const useDashboard = () => {
   }, []);
 
   /**
-   * Upload a CSV file
+   * Upload one or more CSV files
    */
-  const handleUpload = useCallback(async (file) => {
+  const handleUpload = useCallback(async (files) => {
     setLoading(true);
     setError(null);
 
     try {
-      const response = await uploadCSV(file);
+      const response = await uploadCSV(files);
       if (response.success) {
+        if (response.data?.tableName) {
+          setActiveTable(response.data.tableName);
+        }
         return response.data;
       } else {
         setError(response.error);
@@ -66,7 +70,7 @@ export const useDashboard = () => {
       }
     } catch (err) {
       const message =
-        err.response?.data?.error || err.message || 'Failed to upload file';
+        err.response?.data?.error || err.message || 'Failed to upload files';
       setError(message);
       return null;
     } finally {

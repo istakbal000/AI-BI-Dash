@@ -49,6 +49,11 @@ export const recommendChartType = (data, fields, aiSuggestion) => {
     return { chartType: 'bar', reason: 'Categorical comparison' };
   }
 
+  // Two categorical columns + one numeric → heatmap
+  if (fieldNames.length >= 3 && numericFields.length === 1 && (fieldNames.length - numericFields.length) >= 2) {
+    return { chartType: 'heatmap', reason: 'Two categories with a measure — perfect for a heatmap' };
+  }
+
   // Two numeric columns → scatter
   if (numericFields.length >= 2 && !hasDateField && !hasCategoryField) {
     return { chartType: 'scatter', reason: 'Numeric correlation data' };
@@ -66,7 +71,7 @@ export const recommendChartType = (data, fields, aiSuggestion) => {
  * Validate chart type
  */
 const isValidChartType = (type) => {
-  return ['line', 'bar', 'pie', 'scatter', 'table', 'kpi'].includes(type);
+  return ['line', 'bar', 'pie', 'scatter', 'table', 'kpi', 'heatmap'].includes(type);
 };
 
 /**
@@ -78,9 +83,24 @@ export const formatChartData = (rows, xAxis, yAxis, chartType) => {
   return rows.map((row) => {
     const formatted = {};
     for (const [key, value] of Object.entries(row)) {
-      // Convert numeric strings to numbers for Recharts
-      if (value !== null && !isNaN(value) && value !== '') {
-        formatted[key] = parseFloat(value);
+      if (value === null || value === undefined || value === '') {
+        formatted[key] = null;
+        continue;
+      }
+
+      // If it's already a number, keep it
+      if (typeof value === 'number') {
+        formatted[key] = value;
+        continue;
+      }
+
+      // Convert numeric looking strings to numbers
+      const strVal = String(value);
+      // Remove commas, currency symbols, and other common non-numeric chars for parsing
+      const cleanVal = strVal.replace(/[$, ]/g, '').replace(/,/g, '');
+      
+      if (!isNaN(cleanVal) && cleanVal !== '') {
+        formatted[key] = parseFloat(cleanVal);
       } else {
         formatted[key] = value;
       }

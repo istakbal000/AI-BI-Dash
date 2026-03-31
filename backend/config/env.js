@@ -10,5 +10,6 @@ export const env = {
   dbPassword: process.env.DB_PASSWORD || "postgres",
   dbName: process.env.DB_NAME || "ai_bi_dashboard",
   geminiApiKey: process.env.GEMINI_API_KEY,
+  geminiModel: process.env.GEMINI_MODEL || "gemini-1.5-flash",
   jwtSecret: process.env.JWT_SECRET || "default_secret_key",
 };
