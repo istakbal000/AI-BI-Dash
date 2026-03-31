@@ -1,7 +1,9 @@
 import axios from 'axios';
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://ai-bi-dash-qt9v.onrender.com/api';
+
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: API_BASE_URL,
 });
 
 // Add token to requests
@@ -22,11 +24,16 @@ export const sendQuery = async (query, table = 'sales') => {
 };
 
 /**
- * Upload a CSV file
+ * Upload one or more CSV files
  */
-export const uploadCSV = async (file, onProgress) => {
+export const uploadCSV = async (files, onProgress) => {
   const formData = new FormData();
-  formData.append('file', file);
+  
+  if (Array.isArray(files)) {
+    files.forEach(file => formData.append('file', file));
+  } else {
+    formData.append('file', files);
+  }
 
   const response = await api.post(`/upload`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' },

@@ -3,6 +3,7 @@ import { env } from '../config/env.js';
 
 const genAI = new GoogleGenerativeAI(env.geminiApiKey);
 
+
 /**
  * Schema context for Copilot
  */
@@ -34,6 +35,7 @@ ${columns || defaultColumns}
  */
 export const generateInsights = async (queryData, userQuery, tableName = 'sales', columns = null) => {
   try {
+    
     const schemaContext = getSchemaContext(tableName, columns);
     const dataSample = JSON.stringify(queryData.slice(0, 20), null, 2);
 
@@ -68,7 +70,7 @@ ${dataSample}
 Generate business insights based on this data.`;
 
     const model = genAI.getGenerativeModel({
-      model: 'gemini-flash-latest',
+      model: env.geminiModel,
       systemInstruction: systemPrompt
     });
 
@@ -95,6 +97,7 @@ Generate business insights based on this data.`;
  */
 export const performRootCauseAnalysis = async (whyQuestion, queryData, tableName = 'sales', columns = null) => {
   try {
+    
     const schemaContext = getSchemaContext(tableName, columns);
     const dataSample = JSON.stringify(queryData.slice(0, 30), null, 2);
 
@@ -140,7 +143,7 @@ ${dataSample}
 Perform root cause analysis to answer why this pattern occurred.`;
 
     const model = genAI.getGenerativeModel({
-      model: 'gemini-flash-latest',
+      model: env.geminiModel,
       systemInstruction: systemPrompt
     });
 
@@ -171,6 +174,7 @@ Perform root cause analysis to answer why this pattern occurred.`;
  */
 export const runWhatIfSimulation = async (scenario, queryData, tableName = 'sales', columns = null) => {
   try {
+    
     const schemaContext = getSchemaContext(tableName, columns);
     const dataSample = JSON.stringify(queryData.slice(0, 20), null, 2);
 
@@ -226,7 +230,7 @@ ${dataSample}
 Run the what-if simulation and provide projected outcomes.`;
 
     const model = genAI.getGenerativeModel({
-      model: 'gemini-flash-latest',
+      model: env.geminiModel,
       systemInstruction: systemPrompt
     });
 
@@ -259,6 +263,7 @@ Run the what-if simulation and provide projected outcomes.`;
  */
 export const generateRecommendations = async (queryData, context = {}, tableName = 'sales', columns = null) => {
   try {
+    
     const schemaContext = getSchemaContext(tableName, columns);
     const dataSample = JSON.stringify(queryData.slice(0, 20), null, 2);
     const contextStr = JSON.stringify(context, null, 2);
@@ -304,7 +309,7 @@ ${dataSample}
 Generate prioritized business recommendations based on this analysis.`;
 
     const model = genAI.getGenerativeModel({
-      model: 'gemini-flash-latest',
+      model: env.geminiModel,
       systemInstruction: systemPrompt
     });
 
@@ -350,28 +355,20 @@ export const analyzeWithCopilot = async (analysisRequest) => {
     recommendations: []
   };
 
-  // Run enabled analyses in parallel
-  const promises = [];
-
+  // Run enabled analyses sequentially to avoid quota issues
   if (enableInsights && queryData.length > 0) {
-    promises.push(
-      generateInsights(queryData, userQuery, tableName, columns)
-        .then(insights => { result.insights = insights; })
-    );
+    const insights = await generateInsights(queryData, userQuery, tableName, columns);
+    result.insights = insights;
   }
 
   if (enableRootCause && whyQuestion && queryData.length > 0) {
-    promises.push(
-      performRootCauseAnalysis(whyQuestion, queryData, tableName, columns)
-        .then(rootCause => { result.root_cause = rootCause; })
-    );
+    const rootCause = await performRootCauseAnalysis(whyQuestion, queryData, tableName, columns);
+    result.root_cause = rootCause;
   }
 
   if (enableSimulation && simulationScenario && queryData.length > 0) {
-    promises.push(
-      runWhatIfSimulation(simulationScenario, queryData, tableName, columns)
-        .then(simulation => { result.simulation = simulation; })
-    );
+    const simulation = await runWhatIfSimulation(simulationScenario, queryData, tableName, columns);
+    result.simulation = simulation;
   }
 
   if (enableRecommendations && queryData.length > 0) {
@@ -380,13 +377,9 @@ export const analyzeWithCopilot = async (analysisRequest) => {
       hasRootCause: enableRootCause,
       hasSimulation: enableSimulation
     };
-    promises.push(
-      generateRecommendations(queryData, context, tableName, columns)
-        .then(recommendations => { result.recommendations = recommendations; })
-    );
+    const recommendations = await generateRecommendations(queryData, context, tableName, columns);
+    result.recommendations = recommendations;
   }
-
-  await Promise.all(promises);
 
   return result;
 };
