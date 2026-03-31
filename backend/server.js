@@ -5,6 +5,7 @@ import queryRoutes from './routes/queryRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import copilotRoutes from './routes/copilotRoutes.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
+import { initDatabase } from './initDb.js';
 
 const app = express();
 
@@ -54,11 +55,14 @@ app.use('/api/copilot', copilotRoutes);
 app.use(notFoundHandler);
 app.use(errorHandler);
 
-// Start server
-app.listen(env.port, () => {
-  console.log(`\n🚀 AI BI Dashboard Backend running on port ${env.port}`);
-  console.log(`   Health: http://localhost:${env.port}/api/health`);
-  console.log(`   API:    http://localhost:${env.port}/api\n`);
+// Initialize database and start server
+initDatabase().then(() => {
+  // Start server
+  app.listen(env.port, () => {
+    console.log(`\n🚀 AI BI Dashboard Backend running on port ${env.port}`);
+    console.log(`   Health: http://localhost:${env.port}/api/health`);
+    console.log(`   API:    http://localhost:${env.port}/api\n`);
+  });
 });
 
 export default app;

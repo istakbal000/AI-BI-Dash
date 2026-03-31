@@ -9,28 +9,36 @@ import { env } from '../config/env.js';
 export const signup = async (req, res, next) => {
   try {
     const { fullName, email, password } = req.body;
+    console.log('Signup attempt:', { fullName, email }); // Debug log
 
     if (!fullName || !email || !password) {
       return res.status(400).json({ message: 'All fields are required' });
     }
 
     // Check if user exists
+    console.log('Checking if user exists...');
     const userCheck = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    console.log('User check result:', userCheck.rows.length);
+    
     if (userCheck.rows.length > 0) {
       return res.status(400).json({ message: 'User already exists with this email' });
     }
 
     // Hash password
+    console.log('Hashing password...');
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
     // Create user
+    console.log('Creating user...');
     const newUser = await pool.query(
       'INSERT INTO users (full_name, email, password) VALUES ($1, $2, $3) RETURNING id, full_name, email',
       [fullName, email, hashedPassword]
     );
+    console.log('User created:', newUser.rows[0]);
 
     // Generate JWT
+    console.log('Generating JWT...');
     const token = jwt.sign({ id: newUser.rows[0].id }, env.jwtSecret, { expiresIn: '24h' });
 
     res.status(201).json({
@@ -39,6 +47,7 @@ export const signup = async (req, res, next) => {
       user: newUser.rows[0]
     });
   } catch (error) {
+    console.error('Signup error:', error);
     next(error);
   }
 };
@@ -49,13 +58,17 @@ export const signup = async (req, res, next) => {
 export const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
+    console.log('Login attempt:', { email }); // Debug log
 
     if (!email || !password) {
       return res.status(400).json({ message: 'Email and password are required' });
     }
 
     // Find user
+    console.log('Finding user...');
     const userResult = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    console.log('User found:', userResult.rows.length > 0);
+    
     if (userResult.rows.length === 0) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
@@ -63,12 +76,14 @@ export const login = async (req, res, next) => {
     const user = userResult.rows[0];
 
     // Check password
+    console.log('Checking password...');
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
     // Generate JWT
+    console.log('Generating JWT...');
     const token = jwt.sign({ id: user.id }, env.jwtSecret, { expiresIn: '24h' });
 
     res.json({
@@ -81,6 +96,7 @@ export const login = async (req, res, next) => {
       }
     });
   } catch (error) {
+    console.error('Login error:', error);
     next(error);
   }
 };
