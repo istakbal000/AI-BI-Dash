@@ -115,3 +115,5 @@ export const generateRecommendations = async (params) => {
   return response.data;
 };
 
+export default api;
+
