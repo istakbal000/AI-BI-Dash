@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import axios from 'axios';
 import api from '../services/apiService';
 
 const AuthContext = createContext();
@@ -11,10 +10,10 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       fetchUser();
     } else {
-      delete axios.defaults.headers.common['Authorization'];
+      delete api.defaults.headers.common['Authorization'];
       setLoading(false);
     }
   }, [token]);
@@ -52,7 +51,9 @@ export const AuthProvider = ({ children }) => {
 
   const signup = async (fullName, email, password) => {
     try {
+      console.log('Attempting signup with:', { fullName, email }); // Debug log
       const res = await api.post('/auth/signup', { fullName, email, password });
+      console.log('Signup response:', res.data); // Debug log
       if (res.data.success) {
         localStorage.setItem('token', res.data.token);
         setToken(res.data.token);
@@ -60,9 +61,11 @@ export const AuthProvider = ({ children }) => {
         return { success: true };
       }
     } catch (err) {
+      console.error('Signup error details:', err); // Debug log
+      console.error('Signup error response:', err.response?.data); // Debug log
       return { 
         success: false, 
-        message: err.response?.data?.message || 'Signup failed' 
+        message: err.response?.data?.message || err.message || 'Signup failed' 
       };
     }
   };
@@ -71,7 +74,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('token');
     setToken(null);
     setUser(null);
-    delete axios.defaults.headers.common['Authorization'];
+    delete api.defaults.headers.common['Authorization'];
   };
 
   return (
