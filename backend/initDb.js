@@ -13,12 +13,17 @@ export const initDatabase = async () => {
   try {
     console.log('🔄 Initializing database...');
     
+    // Test database connection first
+    console.log('🔍 Testing database connection...');
+    await pool.query('SELECT NOW()');
+    console.log('✅ Database connection successful');
+    
     // Read and execute migrations
     const migrationsDir = path.join(__dirname, '../database/migrations');
     
     // Check if migrations directory exists
     if (!fs.existsSync(migrationsDir)) {
-      console.log('⚠️ Migrations directory not found');
+      console.log('⚠️ Migrations directory not found, skipping database initialization');
       return;
     }
     
@@ -33,9 +38,26 @@ export const initDatabase = async () => {
       }
     }
     
+    // Verify users table exists
+    console.log('🔍 Verifying users table...');
+    const tableCheck = await pool.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'users'
+      );
+    `);
+    
+    if (tableCheck.rows[0].exists) {
+      console.log('✅ Users table exists');
+    } else {
+      console.log('❌ Users table not found');
+    }
+    
     console.log('✅ Database initialization complete');
   } catch (error) {
     console.error('❌ Database initialization error:', error.message);
+    console.error('Error details:', error);
     // Don't throw - allow server to start even if DB init fails
     // This allows Render to show error logs
   }

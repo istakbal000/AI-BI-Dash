@@ -63,6 +63,19 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
+// Simple test route (no database)
+app.get('/api/test', (req, res) => {
+  res.json({ 
+    message: 'Server is running',
+    timestamp: new Date().toISOString(),
+    env: {
+      port: env.port,
+      dbHost: env.dbHost,
+      dbName: env.dbName
+    }
+  });
+});
+
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api', queryRoutes);
@@ -73,13 +86,30 @@ app.use(notFoundHandler);
 app.use(errorHandler);
 
 // Initialize database and start server
-initDatabase().then(() => {
-  // Start server
-  app.listen(env.port, () => {
-    console.log(`\n🚀 AI BI Dashboard Backend running on port ${env.port}`);
-    console.log(`   Health: http://localhost:${env.port}/api/health`);
-    console.log(`   API:    http://localhost:${env.port}/api\n`);
-  });
-});
+const startServer = async () => {
+  try {
+    console.log('🔄 Initializing database...');
+    await initDatabase();
+    console.log('✅ Database initialized');
+    
+    // Start server
+    app.listen(env.port, () => {
+      console.log(`\n🚀 AI BI Dashboard Backend running on port ${env.port}`);
+      console.log(`   Health: http://localhost:${env.port}/api/health`);
+      console.log(`   API:    http://localhost:${env.port}/api\n`);
+      console.log('Environment variables:');
+      console.log(`   DB_HOST: ${env.dbHost}`);
+      console.log(`   DB_NAME: ${env.dbName}`);
+      console.log(`   GEMINI_API_KEY: ${env.geminiApiKey ? 'SET' : 'MISSING'}`);
+      console.log(`   JWT_SECRET: ${env.jwtSecret ? 'SET' : 'MISSING'}\n`);
+    });
+  } catch (error) {
+    console.error('❌ Failed to start server:', error.message);
+    console.error('Stack:', error.stack);
+    process.exit(1);
+  }
+};
+
+startServer();
 
 export default app;
